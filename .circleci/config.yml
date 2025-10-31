@@ -3,31 +3,80 @@ version: 2.1
 orbs:
   terraform: circleci/terraform@3.2.1
 
-jobs:
-  terraform_plan:
+executors:
+  tf:
     docker:
       - image: cimg/base:stable
+    environment:
+      TF_IN_AUTOMATION: "true"
+      AWS_REGION: "us-east-1"
+
+commands:
+  install_terraform:
     steps:
-      - checkout
       - run:
-          name: Install Terraform
+          name: Install Terraform 1.6.6
           command: |
             sudo apt-get update -y
             sudo apt-get install -y unzip curl
             curl -o tf.zip -L https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
             sudo unzip -o tf.zip -d /usr/local/bin
             terraform -version
-      - run:
-          name: Terraform Init
-          command: terraform init -input=false
-      - run:
-          name: Terraform Validate
-          command: terraform validate
+
+jobs:
+  plan:
+    executor: tf
+    steps:
+      - checkout
+      - install_terraform
+      - restore_cache:
+          keys:
+            - v1-terraform-{{ checksum "main.tf" }}
+      - run: terraform init -input=false
+      - save_cache:
+          key: v1-terraform-{{ checksum "main.tf" }}
+          paths:
+            - .terraform
+      - run: terraform validate
       - run:
           name: Terraform Plan
-          command: terraform plan -input=false
+          command: terraform plan -input=false -out=tfplan
+      - persist_to_workspace:
+          root: .
+          paths:
+            - tfplan
+            - .terraform
+            - .terraform.lock.hcl
+            - main.tf
+            - handler.py
+            - index.html
+      - store_artifacts:
+          path: tfplan
+          destination: tfplan
+
+  apply:
+    executor: tf
+    steps:
+      - checkout
+      - install_terraform
+      - attach_workspace:
+          at: .
+      - run: terraform init -input=false
+      - run:
+          name: Terraform Apply (non-interactive)
+          command: terraform apply -input=false -auto-approve tfplan
 
 workflows:
-  terraform:
+  deploy:
     jobs:
-      - terraform_plan
+      - plan
+      - hold:
+          type: approval
+          requires:
+            - plan
+      - apply:
+          requires:
+            - hold
+          filters:
+            branches:
+              only: main
