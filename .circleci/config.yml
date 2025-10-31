@@ -1,0 +1,33 @@
+version: 2.1
+
+orbs:
+  terraform: circleci/terraform@3.2.1
+
+jobs:
+  terraform_plan:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Install Terraform
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y unzip curl
+            curl -o tf.zip -L https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+            sudo unzip -o tf.zip -d /usr/local/bin
+            terraform -version
+      - run:
+          name: Terraform Init
+          command: terraform init -input=false
+      - run:
+          name: Terraform Validate
+          command: terraform validate
+      - run:
+          name: Terraform Plan
+          command: terraform plan -input=false
+
+workflows:
+  terraform:
+    jobs:
+      - terraform_plan
