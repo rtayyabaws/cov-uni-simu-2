@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Coventry-sim Web</title>
+  </head>
+  <body>
+    <h1>Coventry-sim Web</h1>
+
+    <!-- ====== GET request section ====== -->
+    <button id="btn">Call API</button>
+    <pre id="out">Click the button…</pre>
+
+    <hr />
+
+    <!-- ====== POST request section ====== -->
+    <h2>Submit your name</h2>
+    <input id="name" placeholder="Type your name" />
+    <button id="send">Send</button>
+    <pre id="postout"></pre>
+    <script>
+        // Replace this with your API Gateway Invoke URL (no trailing slash)
+        const API = "https://i6yxsz233d.execute-api.us-east-1.amazonaws.com";
+      
+        // GET /hello -> fetch all messages
+        document.getElementById("btn").onclick = async () => {
+          try {
+            const res = await fetch(`${API}/hello`);
+            const data = await res.json();
+            document.getElementById("out").textContent = JSON.stringify(data, null, 2);
+          } catch (e) {
+            document.getElementById("out").textContent = "Error: " + e;
+          }
+        };
+      
+        // POST /submit -> insert new name
+        document.getElementById("send").onclick = async () => {
+          const name = document.getElementById("name").value;
+          try {
+            const res = await fetch(`${API}/submit`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name }),
+            });
+            const data = await res.json();
+            document.getElementById("postout").textContent = JSON.stringify(data, null, 2);
+          } catch (e) {
+            document.getElementById("postout").textContent = "Error: " + e;
+          }
+        };
+      </script>      
+  </body>
+</html>
